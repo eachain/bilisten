@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -71,10 +70,11 @@ func InitImageCacheManager(dataDir, cacheDir string) {
 		}
 	}
 	if err := sc.Err(); err != nil {
-		log.Printf("image cache manager: scan: %v", err)
+		log := NewLogger("InitImageCacheManager")
+		log.Error("scan: %v", err)
 		_, err = aof.Seek(0, io.SeekEnd)
 		if err != nil {
-			log.Printf("image cache manager: seek to eof: %v", err)
+			log.Error("seek to eof: %v", err)
 		}
 	}
 }
@@ -134,11 +134,12 @@ func (icm *imageCacheManager) evict(tx string) {
 			icm.writeAOF("d", file, size)
 			icm.mut.Unlock()
 
+			log := NewLogger("images:evict").Tx(tx)
 			path := filepath.Join(icm.dir, file)
 			for i := range 3 {
 				err := os.RemoveAll(path)
 				if err != nil {
-					log.Printf("%v image cache: %v", tx, err)
+					log.Error("evict %q: %v", path, err)
 					time.Sleep(time.Second * time.Duration(i+1))
 					continue
 				}
@@ -196,20 +197,21 @@ func (icm *imageCacheManager) Write(tx string, file string, data []byte) {
 		return
 	}
 
+	log := NewLogger("WriteImage").Tx(tx)
 	err := os.MkdirAll(icm.dir, 0755)
 	if err != nil {
-		log.Printf("%v cache image: mkdir %q: %v", tx, icm.dir, err)
+		log.Error("mkdir %q: %v", icm.dir, err)
 		return
 	}
 
 	path := filepath.Join(icm.dir, file)
 	err = os.WriteFile(path, data, 0644)
 	if err != nil {
-		log.Printf("%v cache image: write %q: %v", tx, path, err)
+		log.Error("write %q: %v", path, err)
 		return
 	}
 
-	log.Printf("%v cache image: %q", tx, path)
+	log.Info("cache image: %q done", path)
 
 	icm.mut.Lock()
 	defer icm.mut.Unlock()

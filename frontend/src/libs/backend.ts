@@ -270,3 +270,27 @@ export function videoURL(bvid: string, page?: number): string {
 export function userSpaceURL(mid: string): string {
   return `https://space.bilibili.com/${mid}`;
 }
+
+async function outputLog(
+  lv: string,
+  msg: string,
+  {
+    act = '',
+    extra = {},
+  }: { act?: string; extra?: { [key: string]: any } } = {},
+) {
+  const url = `${BackendURL}/log`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ lv, msg, act, extra }),
+  });
+  return await resp.text();
+}
+
+export const logger = Object.freeze({
+  debug: (msg: string) => outputLog('debug', msg),
+  info: (msg: string) => outputLog('info', msg),
+  warn: (msg: string) => outputLog('warn', msg),
+  error: (msg: string) => outputLog('error', msg),
+});

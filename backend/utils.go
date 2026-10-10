@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 )
 
-
-
 type TimeoutError interface {
 	Timeout() bool
 }

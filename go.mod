@@ -3,6 +3,7 @@ module bilisten
 go 1.25.0
 
 require (
+	github.com/eachain/logfilewriter v1.0.0
 	github.com/eachain/lru v1.0.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.26
 )

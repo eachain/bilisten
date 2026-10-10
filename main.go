@@ -36,6 +36,7 @@ func main() {
 	log.Printf("Cache Home: %v", CacheDir)
 	log.Printf("Data Home: %v", DataDir)
 
+	backend.InitLogger(CacheDir)
 	backend.InitImageCacheManager(DataDir, CacheDir)
 	backend.InitAudioCacheManager(DataDir, CacheDir)
 	backend.InitStorageManager(DataDir)

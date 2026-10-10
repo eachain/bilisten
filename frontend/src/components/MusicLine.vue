@@ -25,7 +25,7 @@ import {
 	pushToPlaylist,
 	type Music
 } from '../libs/player.ts';
-import { proxyImage, userSpaceURL, videoURL } from '../libs/backend.ts';
+import { logger, proxyImage, userSpaceURL, videoURL } from '../libs/backend.ts';
 import { formatCount, formatSendDate } from '../libs/search.ts';
 import { setAnimateStatus, type AnimateStatus } from '../libs/animate.ts';
 import { playMusicByBvid } from '../libs/common.ts';
@@ -73,7 +73,7 @@ const playMusic = async (music: Music) => {
 		)
 	} catch (error) {
 		setAnimateStatus(setPlayStatus, 'error');
-		console.log(`get song view of ${music.bvid}: ${error}`);
+		logger.error(`get song view of ${music.bvid}: ${error}`);
 	}
 }
 
@@ -104,7 +104,7 @@ const pushMusic = async (music: Music) => {
 		)
 	} catch (error) {
 		setAnimateStatus(setPushStatus, 'error');
-		console.log(`get song view of ${music.bvid}: ${error}`);
+		logger.error(`get song view of ${music.bvid}: ${error}`);
 	}
 };
 

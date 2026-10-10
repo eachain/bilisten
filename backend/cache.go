@@ -12,15 +12,29 @@ func queryAudioQuality(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	bvid := query.Get("bvid")
 	cid := query.Get("cid")
-	infos, status := getAudioInfos(tx, bvid, cid)
-	if status != http.StatusOK {
-		w.WriteHeader(status)
-		return
+
+	var cache *AudioCacheInfo
+	for _, q := range SoundQuality {
+		cache = globalAudioCacheManager.GetAudioInfo(bvid, cid, q)
+		if cache != nil {
+			break
+		}
 	}
-	qs := make([]string, 0, len(infos))
-	for _, info := range infos {
-		qs = append(qs, SoundQuality[info.Id])
+
+	var qs []string
+	if cache != nil {
+		qs = cache.Qualities
+	} else {
+		infos, status := getAudioInfos(tx, bvid, cid)
+		if status != http.StatusOK {
+			w.WriteHeader(status)
+			return
+		}
+		for _, info := range infos {
+			qs = append(qs, SoundQuality[info.Id])
+		}
 	}
+
 	json.NewEncoder(w).Encode(qs)
 }
 

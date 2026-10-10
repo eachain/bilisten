@@ -3,10 +3,9 @@ package backend
 import (
 	"errors"
 	"io"
-	"log"
 	"maps"
 	"net/http"
-	"net/http/httputil"
+	"strings"
 	"time"
 )
 
@@ -27,9 +26,12 @@ type CDNOptions struct {
 const CacheControl = "public, max-age=864000, immutable"
 
 func ProxyCDN(w http.ResponseWriter, r *http.Request, opts CDNOptions) {
+	start := time.Now()
+	log := NewLogger("ProxyCDN").Tx(opts.Tx).Method(http.MethodGet).URL(opts.URL)
+
 	request, err := http.NewRequestWithContext(r.Context(), http.MethodGet, opts.URL, nil)
 	if err != nil {
-		log.Printf("%v new request for url %q: %v", opts.Tx, opts.URL, err)
+		log.Error("new request for url %q: %v", opts.URL, err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -40,23 +42,18 @@ func ProxyCDN(w http.ResponseWriter, r *http.Request, opts CDNOptions) {
 			request.Header.Set(key, val)
 		}
 	}
-
-	dump, err := httputil.DumpRequest(request, true)
-	if err != nil {
-		log.Printf("%v dump request: %v", opts.Tx, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	log.Printf("%v dump request: %s", opts.Tx, dump)
+	log.ReqHeaders(request.Header)
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
-		log.Printf("%v http request: %v", opts.Tx, err)
 		if _, ok := err.(TimeoutError); ok {
 			w.WriteHeader(http.StatusGatewayTimeout)
+			log.Status(http.StatusGatewayTimeout)
 		} else {
 			w.WriteHeader(http.StatusServiceUnavailable)
+			log.Status(http.StatusServiceUnavailable)
 		}
+		log.Error("do request: %v", err)
 		return
 	}
 	defer response.Body.Close()
@@ -84,6 +81,8 @@ func ProxyCDN(w http.ResponseWriter, r *http.Request, opts CDNOptions) {
 	}
 
 	w.WriteHeader(response.StatusCode)
+
+	log.Status(response.StatusCode).RspHeaders(w.Header())
 
 	controller := http.NewResponseController(w)
 
@@ -138,12 +137,11 @@ func ProxyCDN(w http.ResponseWriter, r *http.Request, opts CDNOptions) {
 		}
 	}
 
+	log.Cost(time.Since(start))
 	if err != nil {
-		log.Printf("%v response: %s, %v bytes, error: %v",
-			opts.Tx, response.Status, written, err)
+		log.Error("response %v bytes, error: %v", written, err)
 	} else {
-		log.Printf("%v response: %s, %v bytes",
-			opts.Tx, response.Status, written)
+		log.Info("response %v bytes", written)
 	}
 }
 
@@ -162,4 +160,19 @@ func ReuseCache(w http.ResponseWriter, r *http.Request) (reuse bool) {
 		w.WriteHeader(http.StatusNotModified)
 	}
 	return
+}
+
+func PreferURL(baseURL string, backupURL []string) string {
+	if len(baseURL) == 0 {
+		return baseURL
+	}
+	// 部分PCDN连接不可达，如
+	// https://xy115x56x95x31xy.mcdn.bilivideo.cn:8082/v1/resource/upgcxcode/89/34/1142733489/1142733489-1-30280.m4s
+	// 优先使用B站自建CDN，如：
+	// https://upos-sz-estgoss.bilivideo.com/upgcxcode/89/34/1142733489/1142733489-1-30280.m4s
+	if strings.HasPrefix(baseURL, "https://xy") ||
+		strings.Contains(baseURL, "mcdn.bilivideo.cn") {
+		return backupURL[0]
+	}
+	return baseURL
 }

@@ -3,11 +3,11 @@ import { ref } from 'vue';
 import { MediaPlayer, Debug } from 'dashjs';
 import type { MediaPlayerClass } from 'dashjs';
 import {
-  getAudioQualities,
   getPlaylist,
   getPlayState,
   getQualityName,
   getSettings,
+  logger,
   mustHTTPS,
   proxyMPD,
   setPlayState,
@@ -44,7 +44,6 @@ export const progress = ref(0); // 0~duration
 export const buffered = ref(0); // 0~duration
 export const duration = ref(0); // int
 export const quality = ref('音质'); // low, high, ...
-export const availableQualities = ref<string[]>([]); // low, high, ...
 
 export const playing = ref(false);
 export const playlist = ref<Music[]>([]);
@@ -90,7 +89,6 @@ function resetCurrent() {
   buffered.value = 0; // 0~duration
   duration.value = 0; // int
   quality.value = '音质'; // low, high, ...
-  availableQualities.value = [];
   currentPlayer?.destroy();
   currentPlayer = undefined;
 }
@@ -439,10 +437,10 @@ function playMusic(
   });
   player.on(MediaPlayer.events.ERROR, (e) => {
     setAnimateStatus(set, 'error');
-    console.log('player error:', e);
+    logger.error(`player error: ${e.error.toString()}`);
     noticeAlert({
       level: 'alert-error',
-      message: `播放《${music.title}》失败：${e}`,
+      message: `${music.title}：播放失败`,
     });
     failedCount++;
     if (failedCount > 3) {
@@ -467,9 +465,6 @@ function playMusic(
     duration.value = dash.mediaPresentationDuration;
     quality.value = getQualityName(
       dash.Period[0]?.AdaptationSet[0]?.Representation[0]?.id ?? '',
-    );
-    getAudioQualities(music.bvid, music.cid).then(
-      (qs) => (availableQualities.value = qs),
     );
   });
   player.on(MediaPlayer.events.BUFFER_LOADED, () => {

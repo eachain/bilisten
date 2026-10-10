@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -87,10 +86,11 @@ func InitAudioCacheManager(dataDir, cacheDir string) {
 		}
 	}
 	if err := sc.Err(); err != nil {
-		log.Printf("audio cache manager: scan: %v", err)
+		log := NewLogger("InitAudioCacheManager")
+		log.Error("scan: %v", err)
 		_, err = aof.Seek(0, io.SeekEnd)
 		if err != nil {
-			log.Printf("audio cache manager: seek to eof: %v", err)
+			log.Error("seek to eof: %v", err)
 		}
 	}
 
@@ -163,25 +163,26 @@ func (acm *audioCacheManager) remove(tx string, name string) {
 }
 
 func (acm *audioCacheManager) removeFile(tx string, file string) {
+	log := NewLogger("removeAudioFile").Tx(tx)
 	audio := filepath.Join(acm.dir, file+".m4s")
 	meta := filepath.Join(acm.dir, file+".json")
 	tmp := filepath.Join(acm.dir, file)
 	for i := range 3 {
 		err := os.RemoveAll(audio)
 		if err != nil {
-			log.Printf("%v audio cache: remove %q: %v", tx, audio, err)
+			log.Error("remove %q: %v", audio, err)
 			time.Sleep(time.Second * time.Duration(i+1))
 			continue
 		}
 		err = os.RemoveAll(tmp)
 		if err != nil {
-			log.Printf("%v audio cache: remove %q: %v", tx, tmp, err)
+			log.Error("remove %q: %v", tmp, err)
 			time.Sleep(time.Second * time.Duration(i+1))
 			continue
 		}
 		err = os.RemoveAll(meta)
 		if err != nil {
-			log.Printf("%v audio cache: remove %q: %v", tx, meta, err)
+			log.Error("remove %q: %v", meta, err)
 			time.Sleep(time.Second * time.Duration(i+1))
 			continue
 		}
@@ -220,14 +221,16 @@ func (acm *audioCacheManager) Clear() {
 }
 
 func (acm *audioCacheManager) Write(tx string, name, file string, data []byte, total int64) {
+	log := NewLogger("WriteAudioFile").Tx(tx)
+
 	err := os.WriteFile(file, data, 0644)
 	if err != nil {
-		log.Printf("%v cache audio: write %q: %v", tx, file, err)
+		log.Error("write %q: %v", file, err)
 		go acm.remove(tx, name)
 		return
 	}
 
-	log.Printf("%v cache audio: %q", tx, file)
+	log.Info("write to %q ok", file)
 
 	partSize := int64(len(data))
 	acm.mut.Lock()
@@ -263,23 +266,25 @@ func (acm *audioCacheManager) merge(tx string, name string) {
 		}
 	}()
 
+	log := NewLogger("merge").Tx(tx)
+
 	tmpDir := filepath.Join(acm.dir, name)
 	meta := filepath.Join(tmpDir, name+".json")
 	content, err := os.ReadFile(meta)
 	if err != nil {
-		log.Printf("%v merge %v, read meta %q: %v", tx, name, meta, err)
+		log.Error("merge %v, read meta %q: %v", name, meta, err)
 		return
 	}
 	info := new(AudioCacheInfo)
 	err = json.Unmarshal(content, info)
 	if err != nil {
-		log.Printf("%v merge %v, json loads meta %q: %v", tx, name, meta, err)
+		log.Error("merge %v, json loads meta %q: %v", name, meta, err)
 		return
 	}
 
 	entries, err := os.ReadDir(tmpDir)
 	if err != nil {
-		log.Printf("%v merge %v, read tmp dir %q: %v", tx, name, tmpDir, err)
+		log.Error("merge %v, read tmp dir %q: %v", name, tmpDir, err)
 		return
 	}
 
@@ -297,12 +302,12 @@ func (acm *audioCacheManager) merge(tx string, name string) {
 		}
 		start, err := strconv.ParseInt(startStr, 10, 64)
 		if err != nil {
-			log.Printf("%v merge %v, parse range start of %q: %v", tx, name, base, err)
+			log.Error("merge %v, parse range start of %q: %v", name, base, err)
 			return
 		}
 		end, err := strconv.ParseInt(endStr, 10, 64)
 		if err != nil {
-			log.Printf("%v merge %v, parse range end of %q: %v", tx, name, base, err)
+			log.Error("merge %v, parse range end of %q: %v", name, base, err)
 			return
 		}
 		parts = append(parts, audioPart{
@@ -322,20 +327,20 @@ func (acm *audioCacheManager) merge(tx string, name string) {
 	var end int64 = -1
 	for _, part := range parts {
 		if part.start != end+1 {
-			log.Printf("%v merge %v, range not found: %v-%v", tx, name, end, part.start)
+			log.Error("merge %v, range not found: %v-%v", name, end, part.start)
 			return
 		}
 		end = part.end
 	}
 	if end != info.Size-1 {
-		log.Printf("%v merge %v, range not found: %v-%v", tx, name, end, info.Size-1)
+		log.Error("merge %v, range not found: %v-%v", name, end, info.Size-1)
 		return
 	}
 
 	mergeFile := filepath.Join(tmpDir, name+".m4s")
 	mergeFp, err := os.OpenFile(mergeFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Printf("%v merge %v, open merge file %q: %v", tx, name, mergeFile, err)
+		log.Error("merge %v, open merge file %q: %v", name, mergeFile, err)
 		return
 	}
 	var mergeFpClosed bool
@@ -351,7 +356,7 @@ func (acm *audioCacheManager) merge(tx string, name string) {
 			partFile := filepath.Join(tmpDir, part.name)
 			partFp, err := os.Open(partFile)
 			if err != nil {
-				log.Printf("%v merge %v, open part file %q: %v", tx, name, partFile, err)
+				log.Error("merge %v, open part file %q: %v", name, partFile, err)
 				failErr = err
 				return
 			}
@@ -359,7 +364,8 @@ func (acm *audioCacheManager) merge(tx string, name string) {
 
 			_, err = partFp.WriteTo(mergeFp)
 			if err != nil {
-				log.Printf("%v merge %v, part file %q write to merge file: %v", tx, name, partFile, err)
+				log.Error("merge %v, part file %q write to merge file: %v",
+					name, partFile, err)
 				failErr = err
 				return
 			}
@@ -376,23 +382,23 @@ func (acm *audioCacheManager) merge(tx string, name string) {
 	dstAudio := filepath.Join(acm.dir, name+".m4s")
 	err = os.Rename(meta, dstMeta)
 	if err != nil {
-		log.Printf("%v merge %v, rename meta file %q->%q: %v", tx, name, meta, dstMeta, err)
+		log.Error("merge %v, rename meta file %q->%q: %v", name, meta, dstMeta, err)
 		return
 	}
 	err = os.Rename(mergeFile, dstAudio)
 	if err != nil {
-		log.Printf("%v merge %v, rename audio file %q->%q: %v", tx, name, mergeFile, dstAudio, err)
+		log.Error("merge %v, rename audio file %q->%q: %v", name, mergeFile, dstAudio, err)
 		return
 	}
 
-	log.Printf("%v merge %v ok", tx, name)
+	log.Info("merge %v ok", name)
 
 	success = true
 
 	for range 5 {
 		err = os.RemoveAll(tmpDir)
 		if err != nil {
-			log.Printf("%v merge %v, remove tmp dir %q: %v", tx, name, tmpDir, err)
+			log.Error("merge %v, remove tmp dir %q: %v", name, tmpDir, err)
 			time.Sleep(time.Second)
 			continue
 		}
@@ -428,20 +434,22 @@ func (acm *audioCacheManager) GetAudioInfo(bvid, cid, q string) *AudioCacheInfo 
 		return nil
 	}
 
+	log := NewLogger("GetAudioInfo").Tx(tx)
+
 	path := filepath.Join(acm.dir, name+".json")
 	content, err := os.ReadFile(path)
 	if err == nil {
 		info := new(AudioCacheInfo)
 		err = json.Unmarshal(content, info)
 		if err != nil {
-			log.Printf("%v json load meta %q: %v", tx, path, err)
+			log.Error("json load meta %q: %v", path, err)
 			acm.remove(tx, name)
 			return nil
 		}
 		return info
 	}
 	if !os.IsNotExist(err) {
-		log.Printf("%v read meta %q: %v", tx, path, err)
+		log.Error("read meta %q: %v", path, err)
 		acm.remove(tx, name)
 		return nil
 	}
@@ -456,7 +464,7 @@ func (acm *audioCacheManager) GetAudioInfo(bvid, cid, q string) *AudioCacheInfo 
 	info := new(AudioCacheInfo)
 	err = json.Unmarshal(content, info)
 	if err != nil {
-		log.Printf("%v json load meta %q: %v", tx, path, err)
+		log.Error("json load meta %q: %v", path, err)
 		acm.remove(tx, name)
 		return nil
 	}
@@ -472,9 +480,10 @@ func (acm *audioCacheManager) getLimit() int64 {
 func (acm *audioCacheManager) SetAudioInfo(tx string, info *AudioCacheInfo) {
 	name := acm.genUniqName(info.Bvid, info.Cid, SoundQuality[info.Id])
 
+	log := NewLogger("SetAudioInfo").Tx(tx)
 	content, err := json.Marshal(info)
 	if err != nil {
-		log.Printf("%v json dumps audio info: %v", tx, err)
+		log.Error("json dumps audio info: %v", err)
 		return
 	}
 	size := int64(len(content))
@@ -488,7 +497,7 @@ func (acm *audioCacheManager) SetAudioInfo(tx string, info *AudioCacheInfo) {
 	err = os.WriteFile(file, content, 0644)
 	if err != nil {
 		go acm.remove(tx, name)
-		log.Printf("%v write audio info to %q: %v", tx, file, err)
+		log.Error("write audio info to %q: %v", file, err)
 		return
 	}
 
@@ -592,7 +601,7 @@ func (acm *audioCacheManager) ProxyAudio(w http.ResponseWriter, r *http.Request)
 		}
 		ProxyCDN(w, r, CDNOptions{
 			Tx:          tx,
-			URL:         info.BaseURL,
+			URL:         PreferURL(info.BaseURL, info.BackupURL),
 			ContentType: ContentTypeOf(info.MimeType, info.Codecs),
 			Etag:        AudioCacheEtag(bvid, cid, q),
 		})
@@ -615,10 +624,12 @@ func (acm *audioCacheManager) ProxyAudio(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	log := NewLogger("ProxyAudio").Tx(tx)
+
 	meta := filepath.Join(acm.dir, name, name+".json")
 	content, err := os.ReadFile(meta)
 	if err != nil {
-		log.Printf("%v read meta file %q: %v", tx, meta, err)
+		log.Error("read meta file %q: %v", meta, err)
 		go acm.remove(tx, name)
 		viaCDN()
 		return
@@ -627,7 +638,7 @@ func (acm *audioCacheManager) ProxyAudio(w http.ResponseWriter, r *http.Request)
 	info := new(AudioCacheInfo)
 	err = json.Unmarshal(content, info)
 	if err != nil {
-		log.Printf("%v json loads meta from file %q: %v", tx, meta, err)
+		log.Error("json loads meta from file %q: %v", meta, err)
 		go acm.remove(tx, name)
 		viaCDN()
 		return
@@ -640,7 +651,7 @@ func (acm *audioCacheManager) ProxyAudio(w http.ResponseWriter, r *http.Request)
 	if err == nil {
 		content, err := os.ReadFile(tmp)
 		if err != nil {
-			log.Printf("%v read part file %q: %v", tx, tmp, err)
+			log.Error("read part file %q: %v", tmp, err)
 			go acm.remove(tx, name)
 			viaCDN()
 			return
@@ -663,7 +674,7 @@ func (acm *audioCacheManager) ProxyAudio(w http.ResponseWriter, r *http.Request)
 	hook := acm.NewHook(tx, name, tmp, info)
 	ProxyCDN(w, r, CDNOptions{
 		Tx:             tx,
-		URL:            audio.BaseURL,
+		URL:            PreferURL(audio.BaseURL, audio.BackupURL),
 		ContentType:    ContentTypeOf(info.MimeType, info.Codecs),
 		Etag:           AudioCacheEtag(bvid, cid, q),
 		HookRespHeader: hook.HookRespHeader,

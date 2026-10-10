@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-
 type BuvId struct {
 	b3 string
 	b4 string
@@ -40,10 +39,12 @@ const fingerURL = "https://api.bilibili.com/x/frontend/finger/spi"
 
 func (b *BuvId) update() {
 	now := time.Now()
-	resp := DoRequestAPI(&Request{
+	log := NewLogger("buvid:update")
+	resp := DoRequestAPI(log, &Request{
 		Tx:  NewTx(),
 		URL: fingerURL,
 	})
+	log.Cost(time.Since(now))
 	var result struct {
 		Code    int    `json:"code"`
 		Message string `json:"message"`
@@ -54,12 +55,15 @@ func (b *BuvId) update() {
 	}
 	err := json.Unmarshal(resp.Body, &result)
 	if err != nil {
+		log.Error("json decode response body: %v", err)
 		return
 	}
 	if result.Code != 0 {
+		log.Error("response code: %v %v", result.Code, result.Message)
 		return
 	}
 	b.b3 = result.Data.BuvId3
 	b.b4 = result.Data.BuvId4
 	b.t = now
+	log.Info("done")
 }

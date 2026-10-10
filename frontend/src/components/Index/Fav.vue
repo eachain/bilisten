@@ -15,7 +15,7 @@
     type FavMedia,
     type FavoriteFolder,
   } from "../../libs/fav.ts";
-  import { isLogined } from "../../libs/backend.ts";
+  import { isLogined, logger } from "../../libs/backend.ts";
   import MainLayout from "../MainLayout.vue";
   import {
     playNow,
@@ -133,7 +133,7 @@
         level: "alert-error",
         message: `获取收藏夹《${fav.folder.title}》数据失败：${error}`,
       });
-      console.log(`load fav ${fav.folder.title}: ${error}`);
+      logger.error(`load fav ${fav.folder.title}: ${error}`);
     }
   };
 
@@ -178,7 +178,7 @@
     } catch (error) {
       setAnimateStatus(set, "error");
       noticeAlert({ level: "alert-error", message: `${failed}：${error}` });
-      console.log(`push all musics of fav ${fav.folder.title}: ${error}`);
+      logger.error(`push all musics of fav ${fav.folder.title}: ${error}`);
     }
   };
 

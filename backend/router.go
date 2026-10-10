@@ -18,11 +18,14 @@ func AccessCors(header http.Header) {
 }
 
 func NewRouter(notFound http.Handler) http.HandlerFunc {
+	log := NewLogger("router")
 	return func(w http.ResponseWriter, r *http.Request) {
 		AccessCors(w.Header())
 		if r.Method == http.MethodOptions {
 			return
 		}
+
+		log.URL(r.URL.Path).Info("")
 
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api"):
@@ -42,6 +45,10 @@ func NewRouter(notFound http.Handler) http.HandlerFunc {
 
 		case strings.HasPrefix(r.URL.Path, "/store/"):
 			RouteStoreAPI(w, r)
+
+		case r.URL.Path == "/log":
+			RouteLogAPI(w, r)
+
 		default:
 			notFound.ServeHTTP(w, r)
 		}

@@ -4,7 +4,7 @@
   import { onActivated, onDeactivated, ref } from "vue";
   import { genLoginQRCode, type PollQRCodeResult, qrcodePoll, type QRCodeResult, QRCodeStatus } from "../libs/login";
   import * as qrcode from "qrcode";
-  import { isLogined } from "../libs/backend";
+  import { isLogined, logger } from "../libs/backend";
   import { noticeAlert } from '../libs/alerts';
 
   const loginQRCode = ref();
@@ -27,7 +27,7 @@
       result = await genLoginQRCode();
     } catch (error) {
       noticeAlert({level: 'alert-error', message: `获取登录二维码失败：${error}`});
-      console.log(`get qrcode: ${error}`);
+      logger.error(`get qrcode: ${error}`);
       return;
     }
     // const result = {
@@ -36,10 +36,10 @@
     // };
     qrcode.toCanvas(loginQRCode.value, result.url, (error) => {
       if (error) {
-        console.log("generate qrcode to canvas:", error);
+        logger.error(`generate qrcode to canvas: ${error}`);
         return;
       }
-      console.log("generate qrcode to canvas: ok");
+      logger.info("generate qrcode to canvas: ok");
       continuePoll = true;
       startPolling(result.qrcode_key)
         .catch(() => status.value = 'expired')
@@ -59,10 +59,10 @@
       try {
         result = await qrcodePoll(qrcode_key);
       } catch(error) {
-        console.log(`poll qrcode: ${error}`);
+        logger.error(`poll qrcode: ${error}`);
         continue;
       }
-      console.log("poll qrcode result:", result);
+      logger.info(`poll qrcode result: ${result}`);
       if (result.code === QRCodeStatus.notYetScanned) {
         continue;
       }
@@ -79,7 +79,7 @@
         status.value = 'scanned';
         continue;
       }
-      console.log("unrecognized qrcode status:", result.code, result.message);
+      logger.warn(`unrecognized qrcode status: ${result.code}, ${result.message}`);
       break;
     }
   };

@@ -9,7 +9,7 @@ import {
 import { computed, nextTick, onActivated, onMounted, ref } from 'vue';
 import MainLayout from '../MainLayout.vue';
 import { loadNewMusics, type NewMusicInfo } from '../../libs/recommend.ts';
-import { proxyImage } from '../../libs/backend.ts';
+import { logger, proxyImage } from '../../libs/backend.ts';
 import { formatCount, getSongView, type SongView } from '../../libs/search.ts';
 import { isCurrentPlaying, type Music, pause, play, playing, playNow, pushMultiToPlaylist } from '../../libs/player.ts';
 import { noticeAlert } from '../../libs/alerts.ts';
@@ -29,7 +29,7 @@ const playMusic = async (music: CompNewMusicInfo) => {
 		dash = await getSongView(music.bvid);
 	} catch (error) {
 		setAnimateStatus(set, 'error');
-		console.log(`get song view of ${music.bvid}: ${error}`);
+		logger.error(`get song view of ${music.bvid}: ${error}`);
 		return
 	}
 	if (dash.pages.length === 0) {
@@ -80,7 +80,7 @@ const playMusic = async (music: CompNewMusicInfo) => {
 }
 
 const newMusics = ref<CompNewMusicInfo[]>([]);
-let pagesize = 4;
+let pagesize = 3;
 const totalPagenum = computed(() => Math.floor((newMusics.value.length+pagesize-1) / pagesize));
 const pagenum = ref(1);
 
@@ -101,23 +101,24 @@ const onResize = () => {
 	}
 	lastWidth = totalWidth;
 
-    console.log("new music container width:", totalWidth);
+    logger.debug(`new music container width: ${totalWidth}`);
     const elemWidth = (elems.value[0] as HTMLElement).offsetWidth;
-    console.log("new music container elems:", elemWidth);
+    logger.debug(`new music container elems: ${elemWidth}`);
 
 	const minGap = 32;
 	pagesize = Math.floor((totalWidth - elemWidth) / (elemWidth + minGap)) + 1;
-    console.log("new music container pagesize:", pagesize);
+    logger.debug(`new music container pagesize: ${pagesize}`);
     if (pagesize > 1) {
       realGap = (totalWidth - pagesize * elemWidth) / (pagesize - 1);
     } else {
       realGap = 0;
     }
-	console.log("new music container gap:", realGap);
+	logger.debug(`new music container gap: ${realGap}`);
     container.value.style = `gap: ${realGap}px`;
-	pagenum.value = 1;
     scroll = totalWidth + realGap;
-    console.log("new music container scroll:", scroll);
+    logger.debug(`new music container scroll: ${scroll}`);
+
+	pagenum.value = 1;
 }
 
 const prevPage = () => {
@@ -156,7 +157,7 @@ const refresh = async () => {
 		if (newMusics.value.length === 0) {
 			noticeAlert({level: 'alert-error', message: `拉取新歌速递失败：${error}`});
 		}
-		console.log('load new musics:', error);
+		logger.error(`load new musics: ${error}`);
 		if (newMusics.value.length > 0) {
 			setTimeout(refresh, 10 * 3600_000);
 		}

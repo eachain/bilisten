@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"slices"
@@ -52,11 +51,9 @@ func evictExpired() {
 	defer audioCacheMutex.Unlock()
 
 	now := time.Now()
-	for key, cache := range audioRealInfoCache.Backward() {
+	for key, cache := range audioRealInfoCache.All() {
 		if now.Sub(cache.Time) > time.Hour {
 			audioRealInfoCache.Remove(key)
-		} else {
-			break
 		}
 	}
 }
@@ -147,28 +144,34 @@ func getAudioPlayURL(tx string, bvid, cid string) ([]*AudioInfo, int) {
 	query.Add("from_client", "BROWSER")
 	query.Add("is_main_page", "true")
 	url := `https://api.bilibili.com/x/player/playurl?` + query.Encode()
-	resp := DoRequestAPI(&Request{
+
+	start := time.Now()
+	log := NewLogger("getAudioPlayURL").Tx(tx)
+	resp := DoRequestAPI(log, &Request{
 		Tx:  tx,
 		URL: url,
 	})
+	log.Cost(time.Since(start))
 	if resp.StatusCode != http.StatusOK {
+		log.Error("http status %v", resp.StatusCode)
 		return nil, resp.StatusCode
 	}
-
-	log.Printf("%v bvid=%v&cid=%v playurl: %s", tx, bvid, cid, resp.Body)
 
 	br := new(biliResponse)
 	err := json.Unmarshal(resp.Body, br)
 	if err != nil {
+		log.Error("json decode response: %v", err)
 		return nil, http.StatusInternalServerError
 	}
 	if br.Code != 0 {
+		log.Error("response code: %v %v", br.Code, br.Message)
 		return nil, http.StatusBadRequest
 	}
 
 	pr := new(playResp)
 	err = json.Unmarshal(br.Data, pr)
 	if err != nil {
+		log.Error("json decode response playurl: %v", err)
 		return nil, http.StatusInternalServerError
 	}
 	audios := pr.Dash.Audio
@@ -180,6 +183,7 @@ func getAudioPlayURL(tx string, bvid, cid string) ([]*AudioInfo, int) {
 		audios = append(audios, pr.Dash.Dolby.Audio...)
 	}
 	if len(audios) == 0 {
+		log.Error("no audios found")
 		return nil, http.StatusInternalServerError
 	}
 	for _, info := range audios {
@@ -195,6 +199,8 @@ func getAudioPlayURL(tx string, bvid, cid string) ([]*AudioInfo, int) {
 		info.Qualities = qs
 	}
 	SetAudioInfoToCache(bvid, cid, audios)
+
+	log.Info("done")
 
 	return audios, http.StatusOK
 }
@@ -232,25 +238,6 @@ func getAudioInfo(tx string, bvid, cid string, qs []string) (info *AudioInfo, st
 
 	status = http.StatusInternalServerError
 	return
-}
-
-func getAudioSize(tx string, url string) (int64, error) {
-	request, err := http.NewRequest(http.MethodHead, url, nil)
-	if err != nil {
-		log.Printf("%v new request for head url %q: %v", tx, url, err)
-		return 0, err
-	}
-	setDefaultHeaders(request.Header)
-	buvIdManager.AddCookies(request)
-
-	resp, err := http.DefaultClient.Do(request)
-	if err != nil {
-		log.Printf("%v head url %q: %v", tx, url, err)
-		return 0, err
-	}
-	resp.Body.Close()
-
-	return resp.ContentLength, nil
 }
 
 const MPDTemplate = `<?xml version="1.0" encoding="UTF-8"?>
@@ -332,7 +319,7 @@ func ProxyMPD(w http.ResponseWriter, r *http.Request) {
 	if cache != nil {
 		info = &AudioInfo{
 			Id:          cache.Id,
-			LocalURL:    getLocalURL(bvid, cid, qs[0]),
+			LocalURL:    getLocalURL(bvid, cid, SoundQuality[cache.Id]),
 			Duration:    cache.Duration,
 			BaseURL:     "",
 			BackupURL:   nil,
@@ -373,7 +360,7 @@ func ProxyMPD(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 	err := mpdTemp.Execute(&buf, info)
 	if err != nil {
-		log.Printf("%v mpd template execute: %v", tx, err)
+		NewLogger("ProxyMPD").Tx(tx).Error("mpd template execute: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

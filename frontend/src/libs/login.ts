@@ -1,6 +1,6 @@
 import { cancelAlert, noticeAlert } from './alerts';
 import { addCommomParams, callAPI, WebIfaceEndpoint } from './api';
-import { longPollLoginEvent } from './backend';
+import { logger, longPollLoginEvent } from './backend';
 
 export type QRCodeResult = {
   url: string;
@@ -8,7 +8,7 @@ export type QRCodeResult = {
 };
 
 export async function genLoginQRCode(): Promise<QRCodeResult> {
-  console.log(`generate login qrcode`);
+  logger.info(`generate login qrcode`);
   const params = new URLSearchParams();
   params.append('source', 'main-fe-header');
   params.append('go_url', 'https://www.bilibili.com/');

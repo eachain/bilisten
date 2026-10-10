@@ -4,7 +4,7 @@ import { PauseIcon, PlayIcon, Refresh01Icon } from '@hugeicons/core-free-icons';
 import { computed, nextTick, onActivated, onMounted, ref } from 'vue';
 import MainLayout from '../MainLayout.vue';
 import { loadHotMusics, type HotMusic } from '../../libs/recommend.ts';
-import { proxyImage } from '../../libs/backend.ts';
+import { logger, proxyImage } from '../../libs/backend.ts';
 import { formatCount, getSongView, type SongView } from '../../libs/search.ts';
 import { isCurrentPlaying, pause, play, playing, playNow } from '../../libs/player.ts';
 import Empty from '../Empty.vue';
@@ -24,7 +24,7 @@ const playMusic = async (music: CompHotMusic) => {
 		dash = await getSongView(music.bvid);
 	} catch (error) {
 		setAnimateStatus(set, 'error');
-		console.log(`get song view ${music.bvid}: ${error}`);
+		logger.error(`get song view ${music.bvid}: ${error}`);
 		return;
 	}
 	const pages = dash.pages.filter((p) => `${p.cid}` === music.cid);
@@ -54,7 +54,7 @@ const playMusic = async (music: CompHotMusic) => {
 
 const hotMusics = ref<CompHotMusic[]>([]);
 const pages = ref<CompHotMusic[][][]>([]);
-let pagesize = 4;
+let pagesize = 3;
 const totalPagenum = computed(() => Math.floor((hotMusics.value.length+pagesize*2-1) / (pagesize*2)));
 const pagenum = ref(1);
 
@@ -74,24 +74,24 @@ const onResize = async () => {
 	}
 	lastWidth = totalWidth;
 
-    console.log("new music container width:", totalWidth);
+    logger.debug(`new music container width: ${totalWidth}`);
     const elemWidth = 256; // (elems.value[0] as HTMLElement).offsetWidth;
-    console.log("new music container elems:", elemWidth);
+    logger.debug(`new music container elems: ${elemWidth}`);
 
 	const minGap = 32;
 	pagesize = Math.floor((totalWidth - elemWidth) / (elemWidth + minGap)) + 1;
-    console.log("new music container pagesize:", pagesize);
+    logger.debug(`new music container pagesize: ${pagesize}`);
     if (pagesize > 1) {
       realGap = (totalWidth - pagesize * elemWidth) / (pagesize - 1);
     } else {
       realGap = 0;
     }
-	console.log("new music container gap:", realGap);
+	logger.debug(`new music container gap: ${realGap}`);
     container.value.style = `gap: ${realGap}px`;
-	pagenum.value = 1;
     scroll = totalWidth + realGap;
-    console.log("new music container scroll:", scroll);
+    logger.debug(`new music container scroll: ${scroll}`);
 
+	pagenum.value = 1;
 	pages.value = [];
 	for (let i = 0; i < totalPagenum.value; i++) {
 		pages.value.push([
@@ -142,7 +142,7 @@ const refresh = async () => {
 		if (hotMusics.value.length === 0) {
 			noticeAlert({level: 'alert-error', message: `拉取热歌精选失败：${error}`});
 		}
-		console.log('load hot musics:', error);
+		logger.error(`load hot musics: ${error}`);
 		if (hotMusics.value.length > 0) {
 			setTimeout(refresh, 10 * 3600_000);
 		}

@@ -5,10 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
 	"maps"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"strings"
 	"time"
@@ -42,20 +40,27 @@ type Response struct {
 }
 
 func ProxyAPI(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	tx := NewTx()
+	log := NewLogger("ProxyAPI").Tx(tx)
+
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Printf("%v read request body: %v", tx, err)
+		log.Error("read request body: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("%v request: %s", tx, reqBody)
+	if json.Valid(reqBody) {
+		log.Req(json.RawMessage(reqBody))
+	} else {
+		log.Req(string(reqBody))
+	}
 
 	req := new(Request)
 	err = json.Unmarshal(reqBody, req)
 	if err != nil {
-		log.Printf("%v decode request: %v", tx, err)
+		log.Status(http.StatusBadRequest).Error("decode request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -63,10 +68,11 @@ func ProxyAPI(w http.ResponseWriter, r *http.Request) {
 	if req.Tx == "" {
 		req.Tx = tx
 	}
+	log.Tx(req.Tx)
 
 	u, err := url.Parse(req.URL)
 	if err != nil {
-		log.Printf("%v decode request: %v", tx, err)
+		log.Status(http.StatusBadRequest).Error("decode request url: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -79,33 +85,35 @@ func ProxyAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	err = wbiKeys.Sign(u)
 	if err != nil {
-		log.Printf("%v wbi sign url: %v", tx, err)
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Status(http.StatusInternalServerError).
+			Cost(time.Since(start)).
+			Error("wbi sign url: %v", err)
 		return
 	}
 	req.URL = u.String()
-	log.Printf("%v wbi signed url: %v", tx, req.URL)
+	log.URL(req.URL)
 
-	resp := DoRequestAPI(req)
+	resp := DoRequestAPI(log, req)
 
 	buf := new(bytes.Buffer)
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(resp)
 	if err != nil {
-		log.Printf("%v encode response: %v", tx, err)
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Cost(time.Since(start)).Error("encode response: %v", err)
 		return
 	}
-	log.Printf("%v response: %s", tx, buf)
 	_, err = buf.WriteTo(w)
 	if err != nil {
-		log.Printf("%v write response: %v", tx, err)
+		log.Cost(time.Since(start)).Error("write response: %v", err)
 		return
 	}
+	log.Cost(time.Since(start)).Info("done")
 }
 
-func DoRequestAPI(req *Request) (resp *Response) {
+func DoRequestAPI(log Logger, req *Request) (resp *Response) {
 	tx := req.Tx
 	ctx := req.Ctx
 	if ctx == nil {
@@ -120,13 +128,16 @@ func DoRequestAPI(req *Request) (resp *Response) {
 	if req.Method == "" {
 		req.Method = "GET"
 	}
+	log.Method(req.Method).URL(req.URL)
+
 	var body io.Reader = http.NoBody
 	if json.Valid(req.Body) {
 		body = bytes.NewReader(req.Body)
+		log.Req(json.RawMessage(req.Body))
 	}
 	request, err := http.NewRequestWithContext(ctx, strings.ToUpper(req.Method), req.URL, body)
 	if err != nil {
-		log.Printf("%v new request: %v", tx, err)
+		log.Status(http.StatusInternalServerError).Error("new request: %v", err)
 		resp.StatusCode = http.StatusInternalServerError
 		return
 	}
@@ -139,36 +150,34 @@ func DoRequestAPI(req *Request) (resp *Response) {
 	}
 	maps.Copy(request.Header, headers)
 	AddLoginedCookies(request)
-
-	dump, err := httputil.DumpRequest(request, true)
-	if err != nil {
-		log.Printf("%v dump request: %v", tx, err)
-		resp.StatusCode = http.StatusInternalServerError
-		return
-	}
-	log.Printf("%v dump request: %s", tx, dump)
+	log.ReqHeaders(request.Header)
 
 	response, err := (&http.Client{
 		Timeout: time.Duration(req.Timeout) * time.Millisecond,
 	}).Do(request)
 	if err != nil {
-		log.Printf("%v http request: %v", tx, err)
 		if _, ok := err.(TimeoutError); ok {
 			resp.StatusCode = http.StatusRequestTimeout
 		} else {
 			resp.StatusCode = http.StatusServiceUnavailable
 		}
+		log.Status(resp.StatusCode).Error("http request: %v", err)
 		return
 	}
 	respBody, err := io.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
 		resp.StatusCode = http.StatusBadGateway
+		log.Status(resp.StatusCode).Error("read response body: %v", err)
 		return
 	}
 	if !json.Valid(respBody) {
 		respBody, _ = json.Marshal(string(respBody))
 	}
+	log.Status(response.StatusCode).
+		Rsp(json.RawMessage(respBody)).
+		RspHeaders(response.Header)
+
 	respHeaders := [][]string{}
 	for key, values := range response.Header {
 		for _, value := range values {

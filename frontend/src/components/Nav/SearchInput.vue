@@ -8,7 +8,7 @@ import { search as apiSearch, suggest, currentKeyword, totalResultCount, hasMore
 import type { SuggestResults } from '../../libs/search.ts';
 import { searchResults, setNextPage, nextPage } from '../../libs/search.ts';
 import { noticeAlert } from '../../libs/alerts.ts';
-import { getSearchHistory, setSearchKeyword } from '../../libs/backend.ts';
+import { getSearchHistory, logger, setSearchKeyword } from '../../libs/backend.ts';
 
 const searchInput = ref();
 const keyword = ref('');
@@ -64,7 +64,7 @@ const search = () => {
             hasMore.value = page < numPages;
         } catch(error) {
             noticeAlert({level: 'alert-error', message: `搜索失败：${error}`});
-            console.log(`search: ${error}`);
+            logger.error(`search "${currentKeyword.value}" page ${page}: ${error}`);
         }
         loading = false;
     })

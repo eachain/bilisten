@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { callAPI, WebIfaceEndpoint } from './api';
+import { logger } from './backend';
 
 export const currentKeyword = ref('');
 export const totalResultCount = ref(0);
@@ -29,7 +30,7 @@ export async function search(
   keyword: string,
   page: number,
 ): Promise<SearchResult> {
-  console.log(`search '${keyword}' page ${page}`);
+  logger.info(`search '${keyword}' page ${page}`);
   const params = new URLSearchParams();
   params.append('search_type', 'video');
   params.append('keyword', keyword);
@@ -121,7 +122,7 @@ export type SuggestResults = {
 }[];
 
 export async function suggest(keyword: string): Promise<SuggestResults> {
-  console.log(`suggest '${keyword}'`);
+  logger.info(`suggest '${keyword}'`);
   const params = new URLSearchParams();
   params.append('term', keyword);
 
@@ -164,7 +165,7 @@ export type SongView = {
 };
 
 export async function getSongView(bvid: string): Promise<SongView> {
-  console.log(`view '${bvid}'`);
+  logger.info(`view '${bvid}'`);
   const params = new URLSearchParams();
   params.append('bvid', bvid);
 
@@ -189,7 +190,7 @@ export async function getPlayURL(
   bvid: string,
   cid: bigint,
 ): Promise<SongPlayURLDash> {
-  console.log(`get playurl '${bvid} ${cid}'`);
+  logger.info(`get playurl '${bvid} ${cid}'`);
   const params = new URLSearchParams();
   params.append('bvid', bvid);
   params.append('cid', `${cid}`);

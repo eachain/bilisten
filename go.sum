@@ -4,6 +4,8 @@ github.com/coder/websocket v1.8.14 h1:9L0p0iKiNOibykf283eHkKUHHrpG7f65OE3BhhO7v9
 github.com/coder/websocket v1.8.14/go.mod h1:NX3SzP+inril6yawo5CQXx8+fk145lPDC6pumgx0mVg=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/eachain/logfilewriter v1.0.0 h1:ne0C19aqc3zxLwIgspZ/es7avHsK2j5R1WvhAcWTwLU=
+github.com/eachain/logfilewriter v1.0.0/go.mod h1:whH2vuGslU4cjMRyJqAkTNsK0r1Txwcz8EKBh1M28sA=
 github.com/eachain/lru v1.0.0 h1:ysCmWLMvnm9tz/B9ugjgupLcZ8NwApIfpndeDy8/Fe0=
 github.com/eachain/lru v1.0.0/go.mod h1:0wF2ahsbbdoPd/3mwowJ97p6NJEKjv3EBrG1PkikLnc=
 github.com/go-json-experiment/json v0.0.0-20251027170946-4849db3c2f7e h1:Lf/gRkoycfOBPa42vU2bbgPurFong6zXeFtPoxholzU=
