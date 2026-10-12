@@ -9,7 +9,7 @@ const backToHome = () => window.location.hash = '#/';
 
 <template>
   <div class="w-full shadow-sm px-8 py-4 bg-base-200 flex flex-row gap-8 justify-between wails-draggable">
-    <div class="w-24 wails-no-drag"></div>
+    <div></div>
     <div class="grow flex flex-row lg:max-w-2/5 md:max-w-1/2 sm:max-w-2/3 gap-4">
       <span class="btn btn-circle wails-no-drag" @click="backToHome">
         <HugeiconsIcon class="opacity-50" :icon="Home07Icon" :stroke-width="1" />
