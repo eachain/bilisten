@@ -133,13 +133,21 @@ func InitMenu(app *application.App, window *application.WebviewWindow) {
 
 	appMenu.AddRole(application.Hide)
 	appMenu.FindByRole(application.Hide).SetLabel("隐藏")
-	appMenu.AddSeparator()
 
 	appMenu.AddRole(application.CloseWindow)
 	appMenu.FindByRole(application.CloseWindow).SetLabel("关闭")
 
 	appMenu.AddRole(application.Quit)
 	appMenu.FindByRole(application.Quit).SetLabel("退出")
+
+	editMenu := menu.AddSubmenu("编辑")
+	editMenu.AddRole(application.SelectAll)
+	editMenu.FindByRole(application.SelectAll).SetLabel("全选")
+	editMenu.AddRole(application.Copy)
+	editMenu.FindByRole(application.Copy).SetLabel("复制")
+	editMenu.AddRole(application.Paste)
+	editMenu.FindByRole(application.Paste).SetLabel("粘贴")
+	editMenu.AddSeparator()
 
 	// Set the application menu
 	app.Menu.Set(menu)
