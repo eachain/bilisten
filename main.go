@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	"os"
 	"path/filepath"
 
 	"bilisten/backend"
@@ -108,13 +109,15 @@ func main() {
 		e.Cancel()                // 阻止窗口关闭
 	})
 
-	// Run the application. This blocks until the application has been exited.
-	err := app.Run()
+	workdir, _ := os.Getwd()
+	backend.NewLogger("main").Info("application try start on: %v", workdir)
 
-	// If an error occurred while running the application, log it and exit.
+	err := app.Run()
 	if err != nil {
-		log.Fatal(err)
+		backend.NewLogger("main").Error("application start failed: %v", err)
+		os.Exit(1)
 	}
+
 }
 
 func InitMenu(app *application.App, window *application.WebviewWindow) {

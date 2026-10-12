@@ -60,9 +60,9 @@ func InitLogger(cacheDir string) {
 		logfilewriter.WithDir(filepath.Join(cacheDir, LogsDir)),
 		logfilewriter.WithFileName("bilisten.log"),
 		logfilewriter.WithFileSizeLimit(100*1024*1024), // 100MB
-		logfilewriter.WithArchiveDir("archive"),
+		logfilewriter.WithArchiveDir(filepath.Join(cacheDir, LogsDir, "archive")),
 		logfilewriter.WithCompress(),
-		logfilewriter.WithRotateDays(7),
+		logfilewriter.WithRotateDays(3),
 	)
 }
 
