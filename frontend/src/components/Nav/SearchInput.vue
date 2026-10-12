@@ -23,8 +23,9 @@ onMounted(() => {
     window.addEventListener('keydown', (e) => {
         if (e.metaKey && (e.key === 'k' || e.code === 'KeyK')) {
             searchInput.value?.focus();
-		}
-	})
+            e.preventDefault();
+        }
+    })
 
     getSearchHistory().then(list => history = list);
 })

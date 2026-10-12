@@ -49,6 +49,7 @@
     window.addEventListener("keydown", (e) => {
       if (e.metaKey && (e.key === "," || e.code === "Comma")) {
         window.location.hash = "#/settings";
+        e.preventDefault();
       }
     });
   });

@@ -6,21 +6,23 @@ import { onMounted } from 'vue';
 
 onMounted(() => {
 	window.addEventListener('keydown', (e) => {
-		e.preventDefault();
 		if (e.key === ' ' || e.code === 'Space') {
 			toggle();
+			e.preventDefault();
 		} else if (e.key === 'ArrowLeft' || e.code === 'ArrowLeft') {
 			if (e.metaKey) {
 				playPrev();
 			} else {
 				seekbackward();
 			}
+			e.preventDefault();
 		} else if (e.key === 'ArrowRight' || e.code === 'ArrowRight') {
 			if (e.metaKey) {
 				playNext();
 			} else {
 				seekforward();
 			}
+			e.preventDefault();
 		}
 	})
 })
