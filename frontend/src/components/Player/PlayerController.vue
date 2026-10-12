@@ -1,17 +1,26 @@
 <script setup lang="ts">
 import { HugeiconsIcon } from '@hugeicons/vue';
 import { PlayIcon, PauseIcon, PreviousIcon, NextIcon } from '@hugeicons/core-free-icons';
-import { playing, toggle, playPrev, playNext } from '../../libs/player';
+import { playing, toggle, playPrev, playNext, seekbackward, seekforward } from '../../libs/player';
 import { onMounted } from 'vue';
 
 onMounted(() => {
 	window.addEventListener('keydown', (e) => {
+		e.preventDefault();
 		if (e.key === ' ' || e.code === 'Space') {
 			toggle();
 		} else if (e.key === 'ArrowLeft' || e.code === 'ArrowLeft') {
-			playPrev();
+			if (e.metaKey) {
+				playPrev();
+			} else {
+				seekbackward();
+			}
 		} else if (e.key === 'ArrowRight' || e.code === 'ArrowRight') {
-			playNext();
+			if (e.metaKey) {
+				playNext();
+			} else {
+				seekforward();
+			}
 		}
 	})
 })

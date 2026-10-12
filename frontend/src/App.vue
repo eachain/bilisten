@@ -7,7 +7,7 @@
   import Router from "./components/Router.vue";
   import PlayerBar from "./components/PlayerBar.vue";
   import { autoCheckLoginStatus } from "./libs/login.ts";
-import { listenWailsEvents } from "./libs/wails.ts";
+  import { listenWailsEvents } from "./libs/wails.ts";
 
   onMounted(() => {
     themeChange();

@@ -1,5 +1,13 @@
 import { Events, Browser } from '@wailsio/runtime';
-import { pause, play, playNext, playPrev, toggle } from './player';
+import {
+  pause,
+  play,
+  playNext,
+  playPrev,
+  seekbackward,
+  seekforward,
+  toggle,
+} from './player';
 
 export function listenWailsEvents() {
   Events.On('open-settings', () => {
@@ -20,6 +28,12 @@ export function listenWailsEvents() {
   });
   Events.On('play-prev', () => {
     playPrev();
+  });
+  Events.On('play-seekbackward', () => {
+    seekbackward();
+  });
+  Events.On('play-seekforward', () => {
+    seekforward();
   });
 }
 

@@ -123,34 +123,66 @@ func main() {
 func InitMenu(app *application.App, window *application.WebviewWindow) {
 	menu := app.NewMenu()
 
-	appMenu := menu.AddSubmenu("必听")
+	{
+		appMenu := menu.AddSubmenu("必听")
+		appMenu.AddRole(application.About)
+		appMenu.FindByRole(application.About).SetLabel("关于必听")
+		appMenu.AddSeparator()
 
-	appMenu.AddRole(application.About)
-	appMenu.FindByRole(application.About).SetLabel("关于必听")
-	appMenu.AddSeparator()
+		appMenu.Add("设置").SetAccelerator("Cmd+,").OnClick(func(ctx *application.Context) {
+			app.Event.Emit("open-settings")
+		})
+		appMenu.AddSeparator()
 
-	appMenu.Add("设置").SetAccelerator("Cmd+,").OnClick(func(ctx *application.Context) {
-		app.Event.Emit("open-settings")
-	})
-	appMenu.AddSeparator()
+		appMenu.AddRole(application.Hide)
+		appMenu.FindByRole(application.Hide).SetLabel("隐藏")
 
-	appMenu.AddRole(application.Hide)
-	appMenu.FindByRole(application.Hide).SetLabel("隐藏")
+		appMenu.AddRole(application.CloseWindow)
+		appMenu.FindByRole(application.CloseWindow).SetLabel("关闭")
 
-	appMenu.AddRole(application.CloseWindow)
-	appMenu.FindByRole(application.CloseWindow).SetLabel("关闭")
+		appMenu.AddRole(application.Quit)
+		appMenu.FindByRole(application.Quit).SetLabel("退出")
+	}
 
-	appMenu.AddRole(application.Quit)
-	appMenu.FindByRole(application.Quit).SetLabel("退出")
+	{
+		playMenu := menu.AddSubmenu("控制")
+		playMenu.Add("播放/暂停").
+			SetAccelerator("Space").
+			OnClick(func(ctx *application.Context) {
+				app.Event.Emit("play-toggle")
+			})
+		playMenu.Add("下一曲").
+			SetAccelerator("CmdOrCtrl+Right").
+			OnClick(func(ctx *application.Context) {
+				app.Event.Emit("play-next")
+			})
+		playMenu.Add("上一曲").
+			SetAccelerator("CmdOrCtrl+Left").
+			OnClick(func(ctx *application.Context) {
+				app.Event.Emit("play-prev")
+			})
+		playMenu.Add("快进15秒").
+			SetAccelerator("Right").
+			OnClick(func(ctx *application.Context) {
+				app.Event.Emit("play-seekforward")
+			})
+		playMenu.Add("快退15秒").
+			SetAccelerator("Left").
+			OnClick(func(ctx *application.Context) {
+				app.Event.Emit("play-seekbackward")
+			})
+	}
 
-	editMenu := menu.AddSubmenu("编辑")
-	editMenu.AddRole(application.SelectAll)
-	editMenu.FindByRole(application.SelectAll).SetLabel("全选")
-	editMenu.AddRole(application.Copy)
-	editMenu.FindByRole(application.Copy).SetLabel("复制")
-	editMenu.AddRole(application.Paste)
-	editMenu.FindByRole(application.Paste).SetLabel("粘贴")
-	editMenu.AddSeparator()
+	{
+		editMenu := menu.AddSubmenu("编辑")
+		editMenu.AddRole(application.SelectAll)
+		editMenu.FindByRole(application.SelectAll).SetLabel("全选")
+		editMenu.AddRole(application.Copy)
+		editMenu.FindByRole(application.Copy).SetLabel("复制")
+		editMenu.AddRole(application.Paste)
+		editMenu.FindByRole(application.Paste).SetLabel("粘贴")
+		editMenu.AddSeparator()
+	}
 
 	// Set the application menu
 	app.Menu.Set(menu)

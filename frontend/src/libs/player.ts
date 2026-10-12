@@ -552,6 +552,28 @@ export function seek(dur: number) {
   currentPlayer?.seek(dur);
 }
 
+export function seekbackward() {
+  logger.info('player seekbackward');
+  if (currentPlayer) {
+    if (progress.value > 15) {
+      seek(progress.value - 15);
+    } else {
+      seek(0);
+    }
+  }
+}
+
+export function seekforward() {
+  logger.info('player seekforward');
+  if (currentPlayer) {
+    if (progress.value + 15 < duration.value) {
+      seek(progress.value + 15);
+    } else {
+      seek(duration.value);
+    }
+  }
+}
+
 export function formatDuration(dur: number): string {
   const hours = Math.floor(dur / 3600);
   dur = dur % 3600;
