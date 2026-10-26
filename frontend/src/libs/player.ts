@@ -285,8 +285,8 @@ export function popFromPlaylist(music: Music) {
   }
 
   if (index1 === playindex.value) {
-    resetCurrent();
     if (playlist.value.length === 0) {
+      resetCurrent();
       resetList();
       return;
     }
