@@ -7,8 +7,11 @@ import { onMounted } from 'vue';
 onMounted(() => {
 	window.addEventListener('keydown', (e) => {
 		if (e.key === ' ' || e.code === 'Space') {
-			toggle();
-			e.preventDefault();
+			const isInput = e.target && (e.target as Node).nodeName === 'INPUT';
+			if (!isInput) {
+				toggle();
+				e.preventDefault();
+			}
 		} else if (e.key === 'ArrowLeft' || e.code === 'ArrowLeft') {
 			if (e.metaKey) {
 				playPrev();
